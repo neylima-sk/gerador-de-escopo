@@ -3,10 +3,16 @@
 Ferramenta web (HTML, CSS e JavaScript puros, sem instalação) para montar o escopo de implantação,
 calcular as horas pela regra do Ploomes e gerar os documentos em Word e HTML.
 
-## Acesso (login sem senha)
+## Acesso (e-mail e senha)
 
-O site fica no GitHub Pages e o login é feito por **código enviado ao e-mail** (Supabase Auth, plano gratuito).
-Não há senha: só e-mails cadastrados na aba **Usuários** (visível para administradores) recebem o código.
+O site fica no GitHub Pages e o login é feito com **e-mail e senha** (Supabase Auth, plano gratuito). A senha é
+guardada criptografada (bcrypt) e cada login gera um **JWT**, validado pelo banco em toda consulta. Nenhum e-mail é enviado.
+
+1. O administrador autoriza o e-mail na aba **Usuários**.
+2. A pessoa abre o site, clica em **Primeiro acesso? Crie sua senha** e define a própria senha
+   (mínimo 8 caracteres, com letras e números). O banco recusa e-mails que não foram autorizados.
+3. Esqueceu a senha? O administrador clica em **Redefinir senha** e a pessoa cria outra em "Primeiro acesso".
+4. Após **30 minutos sem uso** a sessão encerra; o sistema continua aberto por trás e basta entrar de novo.
 
 O catálogo de packs e minutagem (`js/data.js`) **não vai para o GitHub**: fica na tabela `catalogo` do Supabase
 e só é carregado depois do login. Para atualizar, edite o `data.js` no seu computador e envie o arquivo em
@@ -14,13 +20,9 @@ e só é carregado depois do login. Para atualizar, edite o `data.js` no seu com
 
 ### Configuração única no painel do Supabase (projeto `gerador-de-escopo`)
 
-1. **Authentication → Emails → SMTP Settings**: ative um SMTP próprio gratuito (ex.: Brevo, 300 e-mails/dia,
-   ou Gmail com senha de app). O SMTP padrão do Supabase só entrega para membros da equipe do projeto.
-2. **Authentication → Emails → Templates → Magic Link**: troque o corpo para mostrar o código, por exemplo
-   `<p>Seu código de acesso ao Gerador de Escopo: <strong>{{ .Token }}</strong></p>`.
-3. **Authentication → Hooks → Before User Created**: ative com a função `public.hook_antes_de_criar_usuario`
-   (impede que e-mails não cadastrados recebam código).
-4. **Authentication → URL Configuration**: Site URL = endereço do GitHub Pages.
+1. **Authentication → Sign In / Providers → Email**: desligue **Confirm email** e salve
+   (sem isso o Supabase tenta mandar e-mail de confirmação no cadastro).
+2. Opcional, no mesmo lugar: **Minimum password length** = 8.
 
 ## Estrutura
 
@@ -28,7 +30,7 @@ e só é carregado depois do login. Para atualizar, edite o `data.js` no seu com
 gerador-de-escopo/
 ├── index.html             tela de login e da ferramenta
 ├── css/style.css          estilos
-├── js/auth.js             login por código no e-mail, carga do catálogo e cadastro de usuários
+├── js/auth.js             login com senha, inatividade, carga do catálogo e cadastro de usuários
 ├── js/supabase-config.js  endereço e chave pública do Supabase
 ├── js/data.js             catálogo (só local, fora do Git; a versão em uso fica no Supabase)
 ├── js/main.js             lógica da tela, cálculo, exportações e versões

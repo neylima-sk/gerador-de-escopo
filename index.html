@@ -21,20 +21,35 @@
         <h1>Gerador de Escopo</h1>
         <p class="text-muted">Sankhya · acesso restrito a e-mails cadastrados</p>
 
-        <form id="login-etapa-email" onsubmit="enviarCodigo(event)">
+        <form id="login-etapa-entrar" onsubmit="entrarComSenha(event)">
             <label for="login-email">E-mail</label>
-            <input type="email" id="login-email" autocomplete="email" placeholder="nome@sankhya.com.br" required>
-            <button class="btn btn-bloco" type="submit" id="btn-enviar-codigo">Enviar código</button>
+            <input type="email" id="login-email" autocomplete="username" placeholder="nome@sankhya.com.br" required>
+            <label for="login-senha">Senha</label>
+            <div class="campo-senha">
+                <input type="password" id="login-senha" autocomplete="current-password" required>
+                <button class="link mostrar-senha" type="button" onclick="mostrarSenha(this)">Mostrar</button>
+            </div>
+            <button class="btn btn-bloco" type="submit" id="btn-entrar">Entrar</button>
+            <div class="login-links">
+                <button class="link" type="button" onclick="alternarModoLogin('criar')">Primeiro acesso? Crie sua senha</button>
+            </div>
         </form>
 
-        <form id="login-etapa-codigo" onsubmit="validarCodigo(event)" hidden>
-            <p>Enviamos um código para <strong id="login-email-enviado"></strong>.</p>
-            <label for="login-codigo">Código de validação</label>
-            <input type="text" id="login-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000" required>
-            <button class="btn btn-bloco" type="submit" id="btn-validar-codigo">Entrar</button>
+        <form id="login-etapa-criar" onsubmit="criarAcesso(event)" hidden>
+            <p class="text-muted login-ajuda">Use o e-mail que o administrador autorizou e crie sua senha.</p>
+            <label for="criar-email">E-mail autorizado</label>
+            <input type="email" id="criar-email" autocomplete="username" placeholder="nome@sankhya.com.br" required>
+            <label for="criar-senha">Nova senha</label>
+            <div class="campo-senha">
+                <input type="password" id="criar-senha" autocomplete="new-password" minlength="8" required>
+                <button class="link mostrar-senha" type="button" onclick="mostrarSenha(this)">Mostrar</button>
+            </div>
+            <small class="text-muted">Mínimo de 8 caracteres, com letras e números.</small>
+            <label for="criar-senha2">Confirme a senha</label>
+            <input type="password" id="criar-senha2" autocomplete="new-password" minlength="8" required>
+            <button class="btn btn-bloco" type="submit" id="btn-criar">Criar acesso</button>
             <div class="login-links">
-                <button class="link" type="button" onclick="enviarCodigo()">Reenviar código</button>
-                <button class="link" type="button" onclick="voltarParaEmail()">Usar outro e-mail</button>
+                <button class="link" type="button" onclick="alternarModoLogin('entrar')">Já tenho senha</button>
             </div>
         </form>
 
@@ -78,7 +93,9 @@
     <!-- ==================== ABA: USUÁRIOS (somente admin) ==================== -->
     <div id="tab-usuarios" class="tab-content">
         <h1>E-mails autorizados</h1>
-        <p class="text-muted">Só os e-mails desta lista recebem o código de acesso. Não há senha: o login é feito pelo código enviado ao e-mail.</p>
+        <p class="text-muted">Só os e-mails desta lista podem criar acesso. Depois de cadastrado, a pessoa abre o site, clica em
+            <strong>Primeiro acesso? Crie sua senha</strong> e define a própria senha. Se ela esquecer a senha, use <strong>Redefinir senha</strong>
+            e peça para criar de novo.</p>
 
         <form class="painel-qtd usuarios-form" onsubmit="cadastrarUsuario(event)">
             <div class="form-group">
@@ -94,7 +111,7 @@
         </form>
 
         <table>
-            <thead><tr><th>E-mail</th><th>Nome</th><th class="center">Admin</th><th class="center">Ação</th></tr></thead>
+            <thead><tr><th>E-mail</th><th>Nome</th><th>Acesso</th><th class="center">Admin</th><th class="center">Ações</th></tr></thead>
             <tbody id="usuarios-lista"></tbody>
         </table>
 
@@ -318,6 +335,17 @@
         <ul class="modal-mudancas" id="modal-info-lista"></ul>
         <div class="modal-botoes">
             <button class="btn" type="button" onclick="fecharModal('modal-info')">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== AVISO DE INATIVIDADE ==================== -->
+<div class="modal-fundo" id="modal-inatividade" role="alertdialog" aria-modal="true" aria-labelledby="inatividade-titulo">
+    <div class="modal">
+        <h2 id="inatividade-titulo">Sessão quase expirando</h2>
+        <p>Por segurança, a sessão encerra após 30 minutos sem uso. Ela vai encerrar em <strong id="inatividade-segundos">120</strong> segundos.</p>
+        <div class="modal-botoes">
+            <button class="btn" type="button" onclick="registrarAtividade(true)">Continuar conectado</button>
         </div>
     </div>
 </div>
