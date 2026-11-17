@@ -1,0 +1,21 @@
+PASTA DE SIMULAÇÕES — Gerador de Escopo Sankhya
+================================================
+
+As simulações salvas pela ferramenta ficam aqui, uma subpasta por cliente + proposta:
+
+  simulacoes/
+  └── CLIENTE_PROPOSTA/
+      ├── v001_2026-10-21_14h30.json
+      ├── v002_2026-10-22_09h10.json
+      └── v003_2026-10-25_16h45.json
+
+- Cada "Salvar versão" cria um arquivo novo. Versões antigas nunca são sobrescritas.
+- Cada arquivo guarda: dados completos do escopo e da sintonia, autor, data,
+  descrição da alteração e a lista do que mudou em relação à versão de origem.
+- Para editar, abra a ferramenta, vá em "Simulações e Versões" e clique em "Abrir"
+  (ou use "Importar arquivo .json"). Ao salvar, a próxima versão é criada.
+
+Gravação direta nesta pasta: Chrome ou Edge (recurso de acesso a pastas do navegador).
+Em outros navegadores o arquivo é baixado; mova-o manualmente para a subpasta correta.
+
+Não apague este arquivo: ele garante que a pasta exista ao copiar/compactar o projeto.

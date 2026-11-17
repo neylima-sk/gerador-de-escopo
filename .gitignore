@@ -1,0 +1,12 @@
+# Simulações de clientes não vão para o repositório (dados comerciais)
+simulacoes/**/*.json
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Catálogo real (packs, minutagem): fica no Supabase, não no repositório público
+js/data.js

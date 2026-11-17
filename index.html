@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gerador de Escopo e Sintonia - Sankhya</title>
+
+    <!-- Biblioteca para exportação em Word (o HTML é gerado sem bibliotecas) -->
+    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+
+    <!-- Login por código no e-mail (Supabase Auth) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="nao-logado">
+
+<!-- ==================== TELA DE LOGIN ==================== -->
+<main class="login-tela" id="tela-login">
+    <div class="login-card">
+        <h1>Gerador de Escopo</h1>
+        <p class="text-muted">Sankhya · acesso restrito a e-mails cadastrados</p>
+
+        <form id="login-etapa-email" onsubmit="enviarCodigo(event)">
+            <label for="login-email">E-mail</label>
+            <input type="email" id="login-email" autocomplete="email" placeholder="nome@sankhya.com.br" required>
+            <button class="btn btn-bloco" type="submit" id="btn-enviar-codigo">Enviar código</button>
+        </form>
+
+        <form id="login-etapa-codigo" onsubmit="validarCodigo(event)" hidden>
+            <p>Enviamos um código para <strong id="login-email-enviado"></strong>.</p>
+            <label for="login-codigo">Código de validação</label>
+            <input type="text" id="login-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="000000" required>
+            <button class="btn btn-bloco" type="submit" id="btn-validar-codigo">Entrar</button>
+            <div class="login-links">
+                <button class="link" type="button" onclick="enviarCodigo()">Reenviar código</button>
+                <button class="link" type="button" onclick="voltarParaEmail()">Usar outro e-mail</button>
+            </div>
+        </form>
+
+        <div id="login-etapa-catalogo" hidden>
+            <label for="catalogo-inicial">Arquivo data.js do gerador</label>
+            <input type="file" id="catalogo-inicial" accept=".js,text/javascript" onchange="enviarCatalogoInicial(this)">
+            <div class="login-links"><button class="link" type="button" onclick="sair()">Sair</button></div>
+        </div>
+
+        <div id="login-etapa-carregando" hidden></div>
+
+        <p class="login-msg" id="login-msg" role="status" aria-live="polite"></p>
+    </div>
+</main>
+
+<!-- ==================== BARRA DA SIMULAÇÃO ==================== -->
+<header class="sim-bar">
+    <div class="sim-info">
+        <span class="sim-nome" id="sim-nome">Nova simulação</span>
+        <span class="sim-versao" id="sim-versao" hidden></span>
+        <span class="sim-status" id="sim-status">Não salva</span>
+    </div>
+    <div class="sim-acoes">
+        <button class="btn" type="button" onclick="novaSimulacao()">Nova</button>
+        <button class="btn" type="button" onclick="openTab('tab-simulacoes')">Simulações salvas</button>
+        <button class="btn btn-salvar" type="button" onclick="abrirModalSalvar()" title="Atalho: Ctrl+S">Salvar versão</button>
+        <span class="usuario-logado" id="usuario-email"></span>
+        <button class="btn" type="button" onclick="sair()">Sair</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <div class="tabs">
+        <button class="tab-btn active" type="button" data-tab="tab-escopo" onclick="openTab('tab-escopo')">Gerador de Escopo</button>
+        <button class="tab-btn" type="button" data-tab="tab-sintonia" onclick="openTab('tab-sintonia')">Sintonia Comercial</button>
+        <button class="tab-btn" type="button" data-tab="tab-simulacoes" onclick="openTab('tab-simulacoes')">Simulações e Versões</button>
+        <button class="tab-btn so-admin" type="button" data-tab="tab-usuarios" onclick="openTab('tab-usuarios'); renderizarUsuarios()" hidden>Usuários</button>
+    </div>
+
+    <!-- ==================== ABA: USUÁRIOS (somente admin) ==================== -->
+    <div id="tab-usuarios" class="tab-content">
+        <h1>E-mails autorizados</h1>
+        <p class="text-muted">Só os e-mails desta lista recebem o código de acesso. Não há senha: o login é feito pelo código enviado ao e-mail.</p>
+
+        <form class="painel-qtd usuarios-form" onsubmit="cadastrarUsuario(event)">
+            <div class="form-group">
+                <label for="novo-email">E-mail</label>
+                <input type="email" id="novo-email" placeholder="nome@sankhya.com.br" required>
+            </div>
+            <div class="form-group">
+                <label for="novo-nome">Nome</label>
+                <input type="text" id="novo-nome" placeholder="Opcional">
+            </div>
+            <label class="cat-label usuarios-admin"><input type="checkbox" id="novo-admin"> Administrador</label>
+            <button class="btn" type="submit">Cadastrar</button>
+        </form>
+
+        <table>
+            <thead><tr><th>E-mail</th><th>Nome</th><th class="center">Admin</th><th class="center">Ação</th></tr></thead>
+            <tbody id="usuarios-lista"></tbody>
+        </table>
+
+        <h2 class="secao">Catálogo de packs (data.js)</h2>
+        <p class="text-muted"><span id="catalogo-info"></span><br>
+            O catálogo fica no banco, não no site. Para atualizar a minutagem, edite o data.js no seu computador e envie aqui.</p>
+        <input type="file" accept=".js,text/javascript" onchange="enviarCatalogoAdmin(this)">
+    </div>
+
+    <!-- ==================== ABA: ESCOPO ==================== -->
+    <div id="tab-escopo" class="tab-content active">
+        <h1>Gerador de Escopo BP MS - Sankhya</h1>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="cliente">Parceiro (Cliente):</label>
+                <input type="text" id="cliente" placeholder="Ex: SANKHYA">
+            </div>
+            <div class="form-group">
+                <label for="proposta">Número da Proposta:</label>
+                <input type="text" id="proposta" placeholder="Ex: 22.000">
+            </div>
+        </div>
+
+        <div class="painel-qtd">
+            <div class="grid-3">
+                <div class="form-group">
+                    <label for="qtd-matrizes">Qtd Matrizes/Coligadas: <small>a 1ª já inclusa; cada adicional +10%</small></label>
+                    <input type="number" id="qtd-matrizes" value="1" min="1" oninput="calcularHoras()">
+                </div>
+                <div class="form-group">
+                    <label for="qtd-filiais">Qtd Filiais: <small>cada uma +5%</small></label>
+                    <input type="number" id="qtd-filiais" value="0" min="0" oninput="calcularHoras()">
+                </div>
+                <div class="form-group">
+                    <label for="qtd-segmentos">Qtd Segmentos: <small>o 1º já incluso; cada adicional +12,5%</small></label>
+                    <input type="number" id="qtd-segmentos" value="1" min="1" oninput="calcularHoras()">
+                </div>
+            </div>
+            <p class="nota-estrutura" id="nota-estrutura" hidden>Matrizes e filiais calculadas pelo <a href="#secao-cnpj">Escopo por CNPJ</a>.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="data-doc">Cidade/UF e Data de Validação:</label>
+            <input type="text" id="data-doc" placeholder="Em branco: Campo Grande/MS e a data do dia em que o documento for gerado">
+        </div>
+
+        <h2>Participantes</h2>
+        <p class="text-muted">Marque a caixa <strong>Assina?</strong> para gerar a linha de assinatura.</p>
+        <table id="tabela-participantes">
+            <thead>
+                <tr><th>Nome</th><th>Cargo / Função</th><th>Empresa</th><th class="center">Assina?</th><th>Ação</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button class="btn btn-sm" type="button" onclick="addParticipante(); agendarVerificacao();">+ Adicionar Participante</button>
+
+        <h2 class="secao">Módulos do Escopo</h2>
+        <div class="busca-packs">
+            <input type="search" id="busca-pack" placeholder="Buscar pack por nome, código ou subprocesso" aria-label="Buscar pack" oninput="filtrarPacks()">
+            <span class="busca-resultado" id="busca-resultado" aria-live="polite"></span>
+        </div>
+        <div id="modulos-container"></div>
+
+        <h2 class="secao" id="secao-cnpj">Escopo por CNPJ <small class="opcional">opcional</small></h2>
+        <p class="text-muted">Use quando o grupo tem CNPJs com escopos diferentes (uns só compram, outros só vendem, outros só financeiro).
+            Liste cada CNPJ, marque o tipo e desmarque os processos que ele não usa. O rollout de cada CNPJ passa a ser
+            % do tipo × horas dos processos dele (Matriz adicional 10%, Filial 5%, Principal já incluso), em vez de % × horas do escopo inteiro.</p>
+        <label class="toggle-cnpj"><input type="checkbox" id="cnpj-ativo" onchange="alternarEscopoCnpj()"> Fazer o escopo por CNPJ</label>
+        <div id="cnpj-painel" hidden>
+            <div id="cnpj-lista" class="cnpj-lista"></div>
+            <div class="cnpj-acoes">
+                <button class="btn btn-sm" type="button" onclick="addCnpjClique()">+ Adicionar CNPJ</button>
+                <span class="cnpj-alerta" id="cnpj-alerta" aria-live="polite"></span>
+            </div>
+        </div>
+
+        <h2 class="secao">Não Escopo</h2>
+        <div class="form-group">
+            <textarea id="nao-escopo-texto" rows="6" placeholder="Ex:&#10;- Não contempla a implantação do módulo de contabilidade."></textarea>
+        </div>
+
+        <h2 class="secao">Horas do projeto <small class="opcional">regra do Ploomes</small></h2>
+        <div class="regra-grid">
+            <div class="regra-entradas">
+                <label class="regra-check"><input type="checkbox" id="regra-import-adic" onchange="calcularHoras()"> Importação de dados — pacote adicional (+8 h)</label>
+                <div class="grid-2">
+                    <div class="form-group"><label for="regra-customizacao">Customização (h)</label><input type="number" id="regra-customizacao" min="0" step="0.5" value="0" oninput="calcularHoras()"></div>
+                    <div class="form-group"><label for="regra-personalizacao">Personalização (h)</label><input type="number" id="regra-personalizacao" min="0" step="0.5" value="0" oninput="calcularHoras()"></div>
+                    <div class="form-group"><label for="regra-cnab-cobranca">Bancos com CNAB de cobrança <small>5 h por banco</small></label><input type="number" id="regra-cnab-cobranca" min="0" step="1" value="0" oninput="calcularHoras()"></div>
+                    <div class="form-group"><label for="regra-cnab-pagamento">Bancos com CNAB de pagamento <small>10 h por banco</small></label><input type="number" id="regra-cnab-pagamento" min="0" step="1" value="0" oninput="calcularHoras()"></div>
+                    <div class="form-group"><label for="regra-ajuste-pct">Ajuste do EV (%)</label><input type="number" id="regra-ajuste-pct" step="1" value="0" oninput="calcularHoras()"></div>
+                    <div class="form-group"><label for="regra-horas-adic">Horas adicionais do EV</label><input type="number" id="regra-horas-adic" step="1" value="0" oninput="calcularHoras()"></div>
+                </div>
+                <div class="form-group"><label for="regra-justificativa">Justificativa do ajuste</label><textarea id="regra-justificativa" rows="2" placeholder="Obrigatória quando houver ajuste do EV" oninput="calcularHoras()"></textarea></div>
+            </div>
+            <table class="regra-composicao" aria-label="Composição das horas">
+                <tbody>
+                    <tr><td>1) Consultoria de pack <small>subprocessos no escopo</small></td><td class="num" id="reg-1">0,0</td></tr>
+                    <tr><td>2) Importação de dados</td><td class="num" id="reg-2">0,0</td></tr>
+                    <tr><td>3) Matrizes, filiais e segmentos <small id="reg-3-det"></small></td><td class="num" id="reg-3">0,0</td></tr>
+                    <tr><td>4) Customização</td><td class="num" id="reg-4">0,0</td></tr>
+                    <tr><td>5) Personalização</td><td class="num" id="reg-5">0,0</td></tr>
+                    <tr><td>6) Integração com o ecossistema</td><td class="num" id="reg-6">0,0</td></tr>
+                    <tr class="subtotal"><td>Total com o escopo ajustado</td><td class="num" id="reg-total-ajustado">0,0</td></tr>
+                    <tr><td>Add-ons e layouts CNAB <small id="reg-addons-det">fora da regra</small></td><td class="num" id="reg-addons">0,0</td></tr>
+                    <tr><td>Ajuste do EV</td><td class="num" id="reg-ajuste">—</td></tr>
+                    <tr class="total"><td>Total de horas desejado <small>arredondado para cima</small></td><td class="num" id="reg-desejado">0 h</td></tr>
+                    <tr class="ref"><td>Total tabela do Ploomes <small>pacote cheio</small></td><td class="num" id="reg-tabela">0 h</td></tr>
+                    <tr class="ref"><td>Diferença</td><td class="num" id="reg-diferenca">0 h</td></tr>
+                </tbody>
+                <tfoot><tr><td colspan="2" id="reg-contagem"></td></tr></tfoot>
+            </table>
+        </div>
+
+        <details class="ploomes" id="ploomes-textos" ontoggle="if (this.open) atualizarTextosPloomes()">
+            <summary>Textos para o Ploomes (campos do EIP)</summary>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="ploomes-motivo">EIP - Motivo para ajuste de horas</label>
+                    <textarea id="ploomes-motivo" rows="14" readonly></textarea>
+                    <button class="btn btn-sm" type="button" onclick="copiarTextoPloomes('motivo')">Copiar</button>
+                </div>
+                <div class="form-group">
+                    <label for="ploomes-detalhamento">EIP - Detalhamento de escopo do projeto</label>
+                    <textarea id="ploomes-detalhamento" rows="14" readonly></textarea>
+                    <button class="btn btn-sm" type="button" onclick="copiarTextoPloomes('detalhamento')">Copiar</button>
+                </div>
+            </div>
+        </details>
+
+        <h2 class="secao">Finalização</h2>
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="horas-calculadas">Total de horas desejado (calculado):</label>
+                <input type="text" id="horas-calculadas" readonly>
+            </div>
+            <div class="form-group">
+                <label for="horas">Volume de Horas Final (Editável):</label>
+                <input type="number" step="0.01" id="horas" placeholder="Ex: 696.00">
+            </div>
+        </div>
+
+        <div class="actions-bar">
+            <button class="btn btn-word btn-lg" type="button" onclick="gerarWordEscopo()">Gerar Word (.docx)</button>
+            <button class="btn btn-html btn-lg" type="button" onclick="gerarHtmlEscopo()">Abrir HTML em nova aba</button>
+        </div>
+    </div>
+
+    <!-- ==================== ABA: SINTONIA COMERCIAL ==================== -->
+    <div id="tab-sintonia" class="tab-content">
+        <h1>Formulário de Levantamento para Sintonia Comercial</h1>
+        <p class="text-muted">Preencha os campos abaixo. As seções representam os blocos do formulário Excel original.</p>
+
+        <div id="sintonia-container"></div>
+
+        <div class="actions-bar">
+            <button class="btn btn-word btn-lg" type="button" onclick="gerarWordSintonia()">Gerar Word (.docx)</button>
+            <button class="btn btn-html btn-lg" type="button" onclick="gerarHtmlSintonia()">Abrir HTML em nova aba</button>
+        </div>
+    </div>
+
+    <!-- ==================== ABA: SIMULAÇÕES E VERSÕES ==================== -->
+    <div id="tab-simulacoes" class="tab-content">
+        <h1>Simulações e Versões</h1>
+
+        <div class="pasta-status" id="pasta-status">
+            <p id="pasta-texto">Nenhuma pasta conectada.</p>
+            <div class="sim-acoes">
+                <button class="btn" type="button" id="btn-conectar" onclick="conectarPasta()">Conectar pasta do projeto</button>
+                <button class="btn btn-sec" type="button" id="btn-atualizar" onclick="listarSimulacoes()" hidden>Atualizar lista</button>
+            </div>
+        </div>
+
+        <div class="instructions" id="instrucoes-pasta">
+            <ul>
+                <li>Clique em <strong>Conectar pasta do projeto</strong> e selecione a pasta <strong>gerador-sankhya</strong>. As simulações ficam em <strong>gerador-sankhya/simulacoes</strong>, uma subpasta por cliente e proposta.</li>
+                <li>Cada <strong>Salvar versão</strong> cria um arquivo novo (v001, v002…). Nenhuma versão anterior é sobrescrita.</li>
+                <li>Use <strong>Abrir</strong> para carregar qualquer versão, editar e salvar como a próxima versão.</li>
+            </ul>
+        </div>
+
+        <div class="ferramentas-sim">
+            <input type="search" id="filtro-sim" placeholder="Filtrar por cliente ou proposta" aria-label="Filtrar simulações" oninput="renderizarListaSimulacoes()">
+            <button class="btn btn-sec" type="button" onclick="document.getElementById('input-importar').click()">Importar arquivo .json</button>
+            <input type="file" id="input-importar" accept=".json,application/json" hidden onchange="importarArquivo(event)">
+        </div>
+
+        <div id="lista-simulacoes" class="lista-sim"></div>
+    </div>
+
+</div>
+
+<!-- ==================== MODAL: SALVAR VERSÃO ==================== -->
+<div class="modal-fundo" id="modal-salvar" role="dialog" aria-modal="true" aria-labelledby="modal-salvar-titulo">
+    <div class="modal">
+        <h2 id="modal-salvar-titulo">Salvar nova versão</h2>
+        <div class="modal-destino" id="modal-destino"></div>
+        <div class="form-group">
+            <label for="versao-autor">Responsável:</label>
+            <input type="text" id="versao-autor" placeholder="Seu nome">
+        </div>
+        <div class="form-group">
+            <label for="versao-comentario">Descrição da alteração:</label>
+            <textarea id="versao-comentario" rows="3" placeholder="Ex: Incluído WMS e ajustadas horas de Vendas após reunião com o cliente"></textarea>
+        </div>
+        <label>Alterações detectadas:</label>
+        <ul class="modal-mudancas" id="modal-mudancas"></ul>
+        <div class="modal-botoes">
+            <button class="btn btn-sec" type="button" onclick="fecharModalSalvar()">Cancelar</button>
+            <button class="btn" type="button" id="btn-confirmar-salvar" onclick="confirmarSalvarVersao()">Salvar versão</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== MODAL: COMPARAR ==================== -->
+<div class="modal-fundo" id="modal-info" role="dialog" aria-modal="true" aria-labelledby="modal-info-titulo">
+    <div class="modal">
+        <h2 id="modal-info-titulo"></h2>
+        <p class="text-muted" id="modal-info-sub"></p>
+        <ul class="modal-mudancas" id="modal-info-lista"></ul>
+        <div class="modal-botoes">
+            <button class="btn" type="button" onclick="fecharModal('modal-info')">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- O catálogo (antigo js/data.js) vem do banco após o login; depois o auth.js carrega o js/main.js -->
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>
